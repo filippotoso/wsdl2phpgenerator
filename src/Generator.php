@@ -83,10 +83,10 @@ class Generator implements GeneratorInterface
         $wsdl = $this->config->get('inputFile');
         if (is_array($wsdl)) {
             foreach ($wsdl as $ws) {
-                $this->load($ws);
+                $this->load($ws, $this->config->get('serviceName'));
             }
         } else {
-            $this->load($wsdl);
+            $this->load($wsdl, $this->config->get('serviceName'));
         }
 
         $this->savePhp();
@@ -97,7 +97,7 @@ class Generator implements GeneratorInterface
     /**
      * Load the wsdl file into php
      */
-    protected function load($wsdl)
+    protected function load($wsdl, $serviceName = null)
     {
         $this->log('Loading the WSDL');
 
@@ -106,18 +106,20 @@ class Generator implements GeneratorInterface
         $this->types = array();
 
         $this->loadTypes();
-        $this->loadService();
+        $this->loadService($serviceName);
     }
 
     /**
      * Loads the service class
      */
-    protected function loadService()
+    protected function loadService($serviceName = null)
     {
         $service = $this->wsdl->getService();
         $this->log('Starting to load service ' . $service->getName());
 
-        $this->service = new Service($this->config, $service->getName(), $this->types, $service->getDocumentation());
+        $serviceName = is_null($serviceName) ? $service->getName() : $serviceName;
+
+        $this->service = new Service($this->config, $serviceName, $this->types, $service->getDocumentation());
 
         foreach ($this->wsdl->getOperations() as $function) {
             $this->log('Loading function ' . $function->getName());
@@ -161,7 +163,7 @@ class Generator implements GeneratorInterface
             } elseif ($enumValues = $typeNode->getEnumerations()) {
                 $type = new Enum($this->config, $typeNode->getName(), $typeNode->getRestriction());
                 array_walk($enumValues, function ($value) use ($type) {
-                      $type->addValue($value);
+                    $type->addValue($value);
                 });
             } elseif ($pattern = $typeNode->getPattern()) {
                 $type = new Pattern($this->config, $typeNode->getName(), $typeNode->getRestriction());
@@ -188,6 +190,7 @@ class Generator implements GeneratorInterface
         // We can only do this once all types have been loaded. Otherwise we risk referencing types which have not been
         // loaded yet.
         foreach ($types as $type) {
+            //echo $type->getBase().'<br/>';
             if (($baseType = $type->getBase()) && isset($this->types[$baseType]) && $this->types[$baseType] instanceof ComplexType) {
                 $this->types[$type->getName()]->setBaseType($this->types[$baseType]);
             }
@@ -207,6 +210,7 @@ class Generator implements GeneratorInterface
         $filter = $factory->create($this->config);
         $filteredService = $filter->filter($this->service);
         $service = $filteredService->getClass();
+
         $filteredTypes = $filteredService->getTypes();
         if ($service == null) {
             throw new Exception('No service loaded');

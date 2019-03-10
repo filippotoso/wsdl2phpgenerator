@@ -153,8 +153,9 @@ class Service implements ClassGenerator
 
         // Create the constructor
         $comment = new PhpDocComment();
-        $comment->addParam(PhpDocElementFactory::getParam('string', 'wsdl', 'The wsdl file to use'));
+
         $comment->addParam(PhpDocElementFactory::getParam('array', 'options', 'A array of config values'));
+        $comment->addParam(PhpDocElementFactory::getParam('string', 'wsdl', 'The wsdl file to use'));
 
         $source = '
   foreach (self::$classmap as $key => $value) {
